@@ -1,15 +1,103 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  password      String
+  bio           String?
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  resources     Resource[]
+  knowledgeNodes KnowledgeNode[]
+  connections   Connection[]
+  followers     Follow[]  @relation("following")
+  following     Follow[]  @relation("followers")
+}
+
+model Resource {
+  id          String    @id @default(uuid())
+  title       String
+  type        ResourceType
+  description String
+  url         String?
+  author      String?
+  status      ResourceStatus
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+  tags        Tag[]
+  nodes       KnowledgeNode[]
+}
+
+model KnowledgeNode {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  resources   Resource[]
+  connections Connection[] @relation("source")
+  targets     Connection[] @relation("target")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Connection {
+  id        String    @id @default(uuid())
+  type      String
+  sourceId  String
+  targetId  String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  source    KnowledgeNode @relation("source", fields: [sourceId], references: [id])
+  target    KnowledgeNode @relation("target", fields: [targetId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Tag {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  resources Resource[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  follower    User     @relation("followers", fields: [followerId], references: [id])
+  following   User     @relation("following", fields: [followingId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+enum ResourceType {
+  BOOK
+  ARTICLE
+  DOCUMENTARY
+  COURSE
+  OTHER
+}
+
+enum ResourceStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
 }
